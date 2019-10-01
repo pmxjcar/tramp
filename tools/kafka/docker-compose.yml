@@ -1,0 +1,59 @@
+version: '2'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+  kafka_manager:
+    image: sheepkiller/kafka-manager
+    ports:
+      - "9000:9000"
+    links: 
+     - zookeeper
+    environment:
+      ZK_HOSTS: zookeeper:2181
+      JMX_PORT: 9999
+      APPLICATION_SECRET: "letmein"
+  kafka-jmx-exporter:
+    build: ./prometheus-jmx-exporter
+    ports:
+      - "8080:8080"
+    links:
+      - kafka
+    environment:
+      - JMX_PORT=9999
+      - JMX_HOST=kafka
+      - HTTP_PORT=8080
+      - JMX_EXPORTER_CONFIG_FILE=kafka.yml
+  prometheus:
+    ports:
+      - 9090:9090/tcp
+    image: prom/prometheus:0.18.0
+#    volumes:
+#      - ./mount/prometheus:/etc/prometheus
+    links:
+      - kafka-jmx-exporter
+  grafana:
+    image: grafana/grafana:3.0.1
+    ports:
+      - 3000:3000/tcp
+    links:
+      - prometheus
+#    volumes:
+#      - "graf-db:/var/lib/grafana"      
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    hostname: kafka
+    links: 
+     - zookeeper
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: "kafka"
+      KAFKA_ADVERTISED_PORT: 9092
+      KAFKA_CREATE_TOPICS: "dev:1:1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      JMX_PORT: 9999
+
+
+    
